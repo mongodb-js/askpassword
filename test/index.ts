@@ -151,7 +151,7 @@ describe('in a PTY', () => {
     });
     proc.on('exit', (code) => {
       assert.strictEqual(code, 0);
-      assert.strictEqual(out, 'READY\r\nPW: >>Mewtoo<<\r\n');
+      assert(out.includes('PW: >>Mewtoo<<'), `Unexpected output: ${out}`);
       done();
     });
   });
