@@ -13,6 +13,13 @@
     "require": "./lib/index.js",
     "import": "./.esm-wrapper.mjs"
   },
+  "files": [
+    "LICENSE",
+    "lib",
+    "package.json",
+    "README.md",
+    ".esm-wrapper.mjs"
+  ],
   "scripts": {
     "lint": "eslint **/*.ts",
     "test": "npm run lint && npm run build && nyc mocha --colors -r ts-node/register test/*.ts",
