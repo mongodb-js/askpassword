@@ -122,7 +122,10 @@ describe('on regular streams', () => {
 describe('in a PTY', () => {
   const requirePath = require.resolve('..');
 
-  it('Does not echo back to the user', (done) => {
+  it('Does not echo back to the user', function (done) {
+    if (process.platform === 'win32') {
+      this.skip();
+    }
     const proc = spawnPty(process.execPath, ['-e', `
       (async () => {
         try {
@@ -156,7 +159,10 @@ describe('in a PTY', () => {
     });
   });
 
-  it('Does not echo back to the user when used from the REPL', (done) => {
+  it('Does not echo back to the user when used from the REPL', function (done) {
+    if (process.platform === 'win32') {
+      this.skip();
+    }
     const proc = spawnPty(process.execPath, ['--interactive'], {
       name: 'xterm',
       env: { ...process.env, NO_COLOR: '1' }
