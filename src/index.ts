@@ -6,20 +6,31 @@ function askPasswordImpl (
   stream: Readable | ReadStream,
   callback: ((err: Error) => void) & ((err: null, result: Buffer|string) => void)) {
   const isTTY: boolean = 'isTTY' in stream && stream.isTTY;
-  let wasRaw = false;
+  let wasRaw: boolean | null = false;
   let streamEnded = false;
+  let wasReset = false;
+  let origSetRawMode = null;
   const wasFlowing: boolean | null = stream.readableFlowing ?? null;
   let buf: Buffer|string = Buffer.alloc(0);
 
   const listeners = {
-    readable: stream.listeners('readable'),
-    data: stream.listeners('data')
+    readable: stream.rawListeners('readable'),
+    data: stream.rawListeners('data'),
+    keypress: stream.rawListeners('keypress')
   };
   stream.removeAllListeners('data');
   stream.removeAllListeners('readable');
+  stream.removeAllListeners('keypress');
   if (isTTY) {
-    wasRaw = (stream as ReadStream).isRaw;
-    (stream as ReadStream).setRawMode(true);
+    const rs = stream as ReadStream;
+    wasRaw = rs.isRaw;
+    rs.setRawMode(true);
+    origSetRawMode = rs.setRawMode;
+    rs.setRawMode = (value) => {
+      wasRaw = null; // Mark wasRaw as explicitly overriden.
+      rs.setRawMode = origSetRawMode;
+      return rs.setRawMode(value);
+    };
   }
   stream.prependListener('data', ondata);
   stream.prependListener('error', onerror);
@@ -31,6 +42,10 @@ function askPasswordImpl (
   }
 
   function reset () {
+    if (wasReset) {
+      throw new Error('askPassword() tried to reset twice, internal bug');
+    }
+    wasReset = true;
     stream.removeListener('data', ondata);
     stream.removeListener('error', onerror);
     stream.removeListener('close', onclose);
@@ -41,11 +56,17 @@ function askPasswordImpl (
     for (const listener of listeners.readable) {
       stream.addListener('readable', listener as (() => void));
     }
+    for (const listener of listeners.keypress) {
+      stream.addListener('keypress', listener as (() => void));
+    }
     if (buf.length > 0 && !streamEnded) {
       stream.unshift(buf);
     }
-    if (isTTY) {
+    if (isTTY && wasRaw !== null) {
       (stream as ReadStream).setRawMode(wasRaw);
+    }
+    if (origSetRawMode !== null) {
+      (stream as ReadStream).setRawMode = origSetRawMode;
     }
     if (wasFlowing === false) {
       stream.pause();

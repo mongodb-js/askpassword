@@ -137,6 +137,7 @@ describe('in a PTY', () => {
           console.log('PW: >>' + await pwdPromise + '<<');
         } catch (err) {
           console.log('Fail: >>' + err.message + '<<');
+          process.exit(1);
         }
       })()
     `], { name: 'xterm' });
@@ -155,6 +156,46 @@ describe('in a PTY', () => {
     proc.on('exit', (code) => {
       assert.strictEqual(code, 0);
       assert(out.includes('PW: >>Mewtoo<<'), `Unexpected output: ${out}`);
+      done();
+    });
+  });
+
+  it('Does not reset TTY raw mode if explicitly changed', function (done) {
+    if (process.platform === 'win32') {
+      this.skip();
+    }
+    const proc = spawnPty(process.execPath, ['-e', `
+      (async () => {
+        try {
+          assert.strictEqual(process.stdin.constructor, tty.ReadStream);
+
+          process.stdin.setRawMode(false);
+          const askpassword = require(${JSON.stringify(requirePath)});
+          const pwdPromise = askpassword(process.stdin);
+          process.stdin.setRawMode(true);
+          console.log('READY');
+          await pwdPromise;
+          assert.strictEqual(process.stdin.isRaw, true);
+        } catch (err) {
+          console.log('Fail: >>' + err.message + '<<');
+          process.exit(1);
+        }
+      })()
+    `], { name: 'xterm' });
+
+    // Note that node-pty does string encoding/decoding for us -- that seems
+    // a bit shady on their side, but it's nice for testing.
+    let out = '';
+    let wrotePassword = false;
+    proc.on('data', (chunk) => {
+      out += chunk;
+      if (out.includes('READY') && !wrotePassword) {
+        proc.write('Mewtoo\r');
+        wrotePassword = true;
+      }
+    });
+    proc.on('exit', (code) => {
+      assert.strictEqual(code, 0);
       done();
     });
   });
