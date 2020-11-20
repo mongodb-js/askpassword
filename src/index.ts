@@ -121,31 +121,33 @@ function askPasswordImpl (
     } else {
       buf = Buffer.concat([buf, input]);
     }
-    // Check for Ctrl+C/Ctrl+D
-    if (isTTY && (buf.indexOf('\u0003') !== -1 || buf.indexOf('\u0004') !== -1)) {
-      reset();
-      callback(new CancelError());
-      return;
+    // Check for Ctrl+C/Ctrl+D/\r/\n
+    const stops = ['\r', '\n'].concat(isTTY ? ['\u0003', '\u0004'] : []);
+    let stopIndex = buf.length;
+    let stopChar: string;
+    for (const stop of stops) {
+      const index = buf.indexOf(stop);
+      if (index !== -1 && index < stopIndex) {
+        stopIndex = index;
+        stopChar = stop;
+      }
     }
 
-    const crIndex = buf.indexOf('\r');
-    const lfIndex = buf.indexOf('\n');
-    const newlineIndex =
-      crIndex === -1 ? lfIndex
-        : lfIndex === -1 ? crIndex
-          : Math.min(lfIndex, crIndex);
-
-    const addedLength = (newlineIndex === -1 ? buf.length : newlineIndex) - prevLength;
+    const addedLength = stopIndex - prevLength;
     if (options.output && options.replacementCharacter) {
       options.output.write(options.replacementCharacter.repeat(addedLength));
     }
 
-    if (newlineIndex === -1) return;
-    const result = buf.slice(0, newlineIndex);
-    buf = buf.slice(newlineIndex + 1);
+    if (stopIndex === buf.length) return;
+    const result = buf.slice(0, stopIndex);
+    buf = buf.slice(stopIndex + 1);
 
     reset();
-    callback(null, result);
+    if (stopChar === '\r' || stopChar === '\n') {
+      callback(null, result);
+    } else {
+      callback(new CancelError());
+    }
   }
 
   function onend () {

@@ -125,6 +125,7 @@ describe('on regular streams', () => {
       isRaw: false,
       setRawMode () { return false; }
     });
+    stream.on('data', mustNotCall());
     const pwdPromise = askpassword(stream);
     stream.push(Buffer.from('Apple\u0003'));
     let error;
