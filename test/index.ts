@@ -1,7 +1,7 @@
 import askpassword from '..';
 import assert from 'assert';
 import { spawn as spawnPty } from 'node-pty';
-import { Readable } from 'stream';
+import { Readable, PassThrough } from 'stream';
 
 function mustNotCall () {
   const { stack } = new Error();
@@ -134,6 +134,15 @@ describe('on regular streams', () => {
       error = err;
     }
     assert.strictEqual(error.code, 'ECANCELED');
+  });
+
+  it('provides a way to specify readback characters', async () => {
+    const input = new Readable({ read () { /* ignore */ } });
+    const output = new PassThrough();
+    const pwdPromise = askpassword({ input, output, replacementCharacter: '*' });
+    input.push(Buffer.from('Banana\n'));
+    assert.deepStrictEqual(await pwdPromise, Buffer.from('Banana'));
+    assert.strictEqual(output.read().toString(), '******');
   });
 });
 

@@ -1,6 +1,12 @@
 import { promisify } from 'util';
-import type { Readable } from 'stream';
+import type { Readable, Writable } from 'stream';
 import type { ReadStream } from 'tty';
+
+type Options = {
+  input?: Readable | ReadStream;
+  output?: Writable;
+  replacementCharacter?: string;
+};
 
 class CancelError extends Error {
   constructor () {
@@ -13,8 +19,18 @@ class CancelError extends Error {
 }
 
 function askPasswordImpl (
-  stream: Readable | ReadStream,
+  streamOrOptions: Readable | ReadStream | Options,
   callback: ((err: Error) => void) & ((err: null, result: Buffer|string) => void)) {
+  let stream: Readable | ReadStream;
+  let options: Options;
+  if ('input' in streamOrOptions) {
+    stream = streamOrOptions.input;
+    options = streamOrOptions;
+  } else {
+    stream = streamOrOptions as Readable;
+    options = {};
+  }
+
   const isTTY: boolean = 'isTTY' in stream && stream.isTTY;
   let wasRaw: boolean | null = false;
   let streamEnded = false;
@@ -99,6 +115,7 @@ function askPasswordImpl (
   }
 
   function ondata (input) {
+    const prevLength = buf.length;
     if (typeof input === 'string') {
       buf += input; // If somebody called stream.setEncoding()
     } else {
@@ -110,14 +127,20 @@ function askPasswordImpl (
       callback(new CancelError());
       return;
     }
+
     const crIndex = buf.indexOf('\r');
     const lfIndex = buf.indexOf('\n');
     const newlineIndex =
       crIndex === -1 ? lfIndex
         : lfIndex === -1 ? crIndex
           : Math.min(lfIndex, crIndex);
-    if (newlineIndex === -1) return;
 
+    const addedLength = (newlineIndex === -1 ? buf.length : newlineIndex) - prevLength;
+    if (options.output && options.replacementCharacter) {
+      options.output.write(options.replacementCharacter.repeat(addedLength));
+    }
+
+    if (newlineIndex === -1) return;
     const result = buf.slice(0, newlineIndex);
     buf = buf.slice(newlineIndex + 1);
 
