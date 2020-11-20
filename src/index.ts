@@ -2,6 +2,16 @@ import { promisify } from 'util';
 import type { Readable } from 'stream';
 import type { ReadStream } from 'tty';
 
+class CancelError extends Error {
+  constructor () {
+    super('The request was aborted by the user');
+  }
+
+  get code () {
+    return 'ECANCELED';
+  }
+}
+
 function askPasswordImpl (
   stream: Readable | ReadStream,
   callback: ((err: Error) => void) & ((err: null, result: Buffer|string) => void)) {
@@ -90,9 +100,15 @@ function askPasswordImpl (
 
   function ondata (input) {
     if (typeof input === 'string') {
-      buf += input;// If somebody called stream.setEncoding()
+      buf += input; // If somebody called stream.setEncoding()
     } else {
       buf = Buffer.concat([buf, input]);
+    }
+    // Check for Ctrl+C/Ctrl+D
+    if (isTTY && (buf.indexOf('\u0003') !== -1 || buf.indexOf('\u0004') !== -1)) {
+      reset();
+      callback(new CancelError());
+      return;
     }
     const crIndex = buf.indexOf('\r');
     const lfIndex = buf.indexOf('\n');

@@ -117,6 +117,24 @@ describe('on regular streams', () => {
     stream.push(Buffer.from('Apple\nBanana\rOrange'));
     assert.deepStrictEqual(await pwdPromise, Buffer.from('Apple'));
   });
+
+  it('respects Ctrl+C as a way of aborting', async () => {
+    const stream = new Readable({ read () { /* ignore */ } });
+    Object.assign(stream, {
+      isTTY: true,
+      isRaw: false,
+      setRawMode () { return false; }
+    });
+    const pwdPromise = askpassword(stream);
+    stream.push(Buffer.from('Apple\u0003'));
+    let error;
+    try {
+      await pwdPromise;
+    } catch (err) {
+      error = err;
+    }
+    assert.strictEqual(error.code, 'ECANCELED');
+  });
 });
 
 describe('in a PTY', () => {
@@ -125,6 +143,7 @@ describe('in a PTY', () => {
   it('Does not echo back to the user', function (done) {
     if (process.platform === 'win32') {
       this.skip();
+      return;
     }
     const proc = spawnPty(process.execPath, ['-e', `
       (async () => {
@@ -163,6 +182,7 @@ describe('in a PTY', () => {
   it('Does not reset TTY raw mode if explicitly changed', function (done) {
     if (process.platform === 'win32') {
       this.skip();
+      return;
     }
     const proc = spawnPty(process.execPath, ['-e', `
       (async () => {
@@ -203,6 +223,7 @@ describe('in a PTY', () => {
   it('Does not echo back to the user when used from the REPL', function (done) {
     if (process.platform === 'win32') {
       this.skip();
+      return;
     }
     const proc = spawnPty(process.execPath, ['--interactive'], {
       name: 'xterm',
