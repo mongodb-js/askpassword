@@ -145,6 +145,54 @@ describe('on regular streams', () => {
     assert.deepStrictEqual(await pwdPromise, Buffer.from('Banana'));
     assert.strictEqual(output.read().toString(), '******');
   });
+
+  for (const bs of ['\u007f', '\u0008']) {
+    describe(`backspaces (ASCII ${bs.codePointAt(0)})`, () => {
+      it('handles backspaces properly', async () => {
+        const stream = new Readable({ read () { /* ignore */ } });
+        const pwdPromise = askpassword(stream);
+        stream.push(Buffer.from(`Banana${bs}\n`));
+        assert.deepStrictEqual(await pwdPromise, Buffer.from('Banan'));
+      });
+
+      it('ignores backspaces at string start', async () => {
+        const stream = new Readable({ read () { /* ignore */ } });
+        const pwdPromise = askpassword(stream);
+        stream.push(Buffer.from(`${bs}Banana${bs}\n`));
+        assert.deepStrictEqual(await pwdPromise, Buffer.from('Banan'));
+      });
+
+      it('handles UTF-8 input properly', async () => {
+        const stream = new Readable({ read () { /* ignore */ } });
+        const pwdPromise = askpassword(stream);
+        stream.push(Buffer.from(`Bananä${bs}\n`));
+        assert.deepStrictEqual(await pwdPromise, Buffer.from('Banan'));
+      });
+
+      it('handles emoji input properly', async () => {
+        const stream = new Readable({ read () { /* ignore */ } });
+        const pwdPromise = askpassword(stream);
+        stream.push(Buffer.from(`Banan🎉${bs}\n`));
+        assert.deepStrictEqual(await pwdPromise, Buffer.from('Banan'));
+      });
+
+      it('handles UTF-8 input properly (string version)', async () => {
+        const stream = new Readable({ read () { /* ignore */ } });
+        stream.setEncoding('utf8');
+        const pwdPromise = askpassword(stream);
+        stream.push(`Bananä${bs}\n`);
+        assert.deepStrictEqual(await pwdPromise, 'Banan');
+      });
+
+      it('handles emoji input properly (string version)', async () => {
+        const stream = new Readable({ read () { /* ignore */ } });
+        stream.setEncoding('utf8');
+        const pwdPromise = askpassword(stream);
+        stream.push(`Banan🎉${bs}\n`);
+        assert.deepStrictEqual(await pwdPromise, 'Banan');
+      });
+    });
+  }
 });
 
 describe('in a PTY', () => {

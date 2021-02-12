@@ -121,6 +121,7 @@ function askPasswordImpl (
     } else {
       buf = Buffer.concat([buf, input]);
     }
+    buf = handleBackspaces(buf);
     // Check for Ctrl+C/Ctrl+D/\r/\n
     const stops = ['\r', '\n'].concat(isTTY ? ['\u0003', '\u0004'] : []);
     let stopIndex = buf.length;
@@ -167,6 +168,41 @@ function askPasswordImpl (
     reset();
     callback(new Error('Stream closed before password could be read'));
   }
+}
+
+function handleBackspaces (input: Buffer|string): Buffer|string {
+  while (true) {
+    const bs1Index = input.indexOf('\u007f');
+    const bs2Index = input.indexOf('\u0008');
+    let backspaceIndex = -1;
+    if (bs1Index !== -1) {
+      backspaceIndex = bs1Index;
+    }
+    if (bs2Index !== -1 && (backspaceIndex === -1 || bs2Index < backspaceIndex)) {
+      backspaceIndex = bs2Index;
+    }
+
+    if (backspaceIndex === -1) break;
+    if (backspaceIndex === 0) {
+      input = input.slice(1);
+    }
+
+    // Find the first character before the backspace and remove it.
+    if (typeof input === 'string') {
+      input = input.slice(0, backspaceIndex).replace(/.$/u, '') + input.slice(backspaceIndex + 1);
+    } else {
+      // Assume UTF-8 here.
+      let i;
+      for (i = backspaceIndex - 1; i >= backspaceIndex - 6; i--) {
+        if (input[i] <= 0x7f || input[i] >= 0xc0) {
+          break;
+        }
+      }
+      input = Buffer.concat([input.slice(0, i), input.slice(backspaceIndex + 1)]);
+    }
+  }
+
+  return input;
 }
 
 export = promisify(askPasswordImpl);
