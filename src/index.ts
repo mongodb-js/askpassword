@@ -136,7 +136,11 @@ function askPasswordImpl (
 
     const addedLength = stopIndex - prevLength;
     if (options.output && options.replacementCharacter) {
-      options.output.write(options.replacementCharacter.repeat(addedLength));
+      if (addedLength > 0) {
+        options.output.write(options.replacementCharacter.repeat(addedLength));
+      } else if (addedLength < 0) {
+        options.output.write('\u0008 \u0008'.repeat(-addedLength));
+      }
     }
 
     if (stopIndex === buf.length) return;
