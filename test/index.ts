@@ -74,7 +74,7 @@ describe('on regular streams', () => {
     const pwdPromise = askpassword(stream);
     stream.push(Buffer.from('Banana'));
     setImmediate(() => stream.destroy());
-    await assert.rejects(pwdPromise, /Stream closed before password could be read/);
+    await assert.rejects(pwdPromise, /Stream closed before data could be read/);
   });
 
   it('rejects when the stream errors out while reading', async () => {
