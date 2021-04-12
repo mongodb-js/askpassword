@@ -1,6 +1,6 @@
 {
   "name": "askpassword",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "A password prompt that does print data to the TTY",
   "keywords": [
     "password",
