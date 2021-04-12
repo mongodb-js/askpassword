@@ -1,6 +1,6 @@
 # askpassword
 
-A password prompt that does print data to the TTY.
+A password prompt that does not print data to the TTY.
 
 ```js
 import askpassword from 'askpassword';
@@ -21,4 +21,4 @@ Because `read `does not work inside a Node.js REPL.
 
 ## LICENSE
 
-MIT
+Apache-2.0
