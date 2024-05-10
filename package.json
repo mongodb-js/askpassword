@@ -56,7 +56,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "handle-backspaces": "^1.0.0",
-    "hijack-stream": "^1.0.0"
+    "handle-backspaces": "^2.0.0",
+    "hijack-stream": "^2.0.0"
   }
 }
