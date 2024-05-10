@@ -223,15 +223,15 @@ describe('in a PTY', () => {
     // a bit shady on their side, but it's nice for testing.
     let out = '';
     let wrotePassword = false;
-    proc.on('data', (chunk) => {
+    proc.onData((chunk) => {
       out += chunk;
       if (out.includes('READY') && !wrotePassword) {
         proc.write('Mewtoo\r');
         wrotePassword = true;
       }
     });
-    proc.on('exit', (code) => {
-      assert.strictEqual(code, 0);
+    proc.onExit((code) => {
+      assert.deepStrictEqual(code, { exitCode: 0, signal: 0 });
       assert(out.includes('PW: >>Mewtoo<<'), `Unexpected output: ${out}`);
       done();
     });
@@ -265,15 +265,15 @@ describe('in a PTY', () => {
     // a bit shady on their side, but it's nice for testing.
     let out = '';
     let wrotePassword = false;
-    proc.on('data', (chunk) => {
+    proc.onData((chunk) => {
       out += chunk;
       if (out.includes('READY') && !wrotePassword) {
         proc.write('Mewtoo\r');
         wrotePassword = true;
       }
     });
-    proc.on('exit', (code) => {
-      assert.strictEqual(code, 0);
+    proc.onExit((code) => {
+      assert.deepStrictEqual(code, { exitCode: 0, signal: 0 });
       done();
     });
   });
@@ -292,7 +292,7 @@ describe('in a PTY', () => {
     let startedAskPassword = false;
     let wrotePassword = false;
     let didExit = false;
-    proc.on('data', (chunk) => {
+    proc.onData((chunk) => {
       out += chunk;
       if (out.includes('> ') && !startedAskPassword) {
         proc.write(`const askpassword = require(${JSON.stringify(requirePath)});\r`);
@@ -311,8 +311,8 @@ describe('in a PTY', () => {
         didExit = true;
       }
     });
-    proc.on('exit', (code) => {
-      assert.strictEqual(code, 0);
+    proc.onExit((code) => {
+      assert.deepStrictEqual(code, { exitCode: 0, signal: 0 });
       assert(
         out.includes('PW: >>Mewtoo<<'),
         `Unexpected output: ${out}`);
